@@ -3,12 +3,15 @@
 #include <time.h>
 
 typedef struct jogador{
-	
+	int[4] baralho;
 }jogador;
 
 typedef struct deck{
-
+	int[3] fila;
 }deck;
+
+jogador jog[4];
+deck decks[4];
 
 /*int*/void embaralhar(){
 	srand((unsigned)time(NULL));
@@ -31,6 +34,22 @@ typedef struct deck{
 	for(i=0;i<24;i++) printf("%d ",vtr1[i]);
 	printf("\n");
 }
+
+deck reorganizar_deck(deck d){
+	d.fila[2] = d.fila[1];
+	d.fila[1] = d.fila[0];
+	d.fila[0] = -1;
+}
+
+deck reorganizar_deck_apos_descarte(deck d, int carta){
+	if(d.fila[2] == -1){
+		d.fila[2] = d.fila[1];
+	}
+
+}
+
+
+
 
 void matar_todos(){
 

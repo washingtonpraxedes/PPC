@@ -54,7 +54,9 @@ int escolhar_descarte(){
 
 int main(){
 	embaralhar();
+	sleep(2);
 	embaralhar();
+	sleep(2);
 	embaralhar();
 
 return 0;
