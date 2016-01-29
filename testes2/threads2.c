@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <semaphore.h>
+#include <pthread.h>
+
 
 typedef struct jogador{
 	int[4] baralho;
@@ -8,10 +11,14 @@ typedef struct jogador{
 
 typedef struct deck{
 	int[3] fila;
+	int base,topo,N,n; //base = ultima carta / topo = primeira carta / N = número máximo de elementos / n = número de cartas presentes
 }deck;
 
 jogador jog[4];
 deck decks[4];
+pthread_mutex mutex_acesso[4];
+pthread_mutex mutex_controle_cheio[4];
+pthread_mutex mutex_controle_vazio[4];
 
 /*int*/void embaralhar(){
 	srand((unsigned)time(NULL));
@@ -35,31 +42,41 @@ deck decks[4];
 	printf("\n");
 }
 
-deck reorganizar_deck(deck d){
-	d.fila[2] = d.fila[1];
-	d.fila[1] = d.fila[0];
-	d.fila[0] = -1;
+deck reorganizar_deck_apos_saque(deck d){
+	d.fila[topo] = -1;
+	d.topo--;
+	d.n--;
 }
 
-deck reorganizar_deck_apos_descarte(deck d, int carta){
-	if(d.fila[2] == -1){
-		d.fila[2] = d.fila[1];
-	}
-
+deck reorganizar_deck_apos_descarte(deck d){
+	d.base++;
+	d.n++;
 }
-
-
-
 
 void matar_todos(){
 
 }
 
-void sacar_carta(){
-
+void sacar_carta(int jog_id, int index_carta){
+	pthread_mutex_lock(&mutex_acesso[jog_id-1],NULL);
+	if(decks[jog_id-1].n>0){
+		jog[jog_id-1].baralho[index_carta] = d[jog_id-1].fila[topo];
+		d[jog_id-1] = reorganizar_deck_apos_saque(d[jog_id-1]);
+		pthread_mutex_unlock(&mutex_controle_cheio[jog_id-1],NULL);
+	}
+	else pthread_mutex_lock(&mutex_controle_vazio[jog_id-1],NULL);
+	pthread_mutex_unlock(&mutex_acesso[jog_id-1],NULL);
 }
 
-void descartar(){
+void descartar(int jog_id, int index_carta){
+	pthread_mutex_lock(&mutex_acesso[jog_id%4],NULL);
+		if(decks[jog_id%4].n!=N){
+		d[jog_id%4].fila[base] = jog[jog_id%4].baralho[index_carta];
+		d[jog_id%4] = reorganizar_deck_apos_descarte(d[jog_id%4]);
+		pthread_mutex_unlock(&mutex_controle_vazio[jog_id%4],NULL);
+	}
+	else pthread_mutex_lock(&mutex_controle_vazio[jog_id-1],NULL);
+	pthread_mutex_unlock(&mutex_acesso[jog_id-1],NULL);
 
 }
 

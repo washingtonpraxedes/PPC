@@ -1,14 +1,21 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <semaphore.h>
+#include <pthread.h>
+
 
 typedef struct jogador{
-	
+	int[4] baralho;
 }jogador;
 
 typedef struct deck{
-
+	int[3] fila;
+	int base,topo,N,n; //base = ultima carta / topo = primeira carta / N = número máximo de elementos / n = número de cartas presentes
 }deck;
+
+jogador jog[4];
+deck decks[4];
 
 /*int*/void embaralhar(){
 	srand((unsigned)time(NULL));
@@ -30,6 +37,17 @@ typedef struct deck{
 	printf("deck ");
 	for(i=0;i<24;i++) printf("%d ",vtr1[i]);
 	printf("\n");
+}
+
+deck reorganizar_deck_apos_saque(deck d){
+	d.fila[topo] = -1;
+	d.topo--;
+	d.n--;
+}
+
+deck reorganizar_deck_apos_descarte(deck d, int carta){
+	d.base++;
+	d.n++;
 }
 
 void matar_todos(){
