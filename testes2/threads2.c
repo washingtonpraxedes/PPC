@@ -17,8 +17,8 @@ typedef struct deck{
 jogador jog[4];
 deck decks[4];
 pthread_mutex mutex_acesso[4];
-pthread_mutex mutex_controle_cheio[4];
-pthread_mutex mutex_controle_vazio[4];
+sem_t sem_controle_cheio[4];
+sem_t sem_controle_vazio[4];
 
 /*int*/void embaralhar(){
 	srand((unsigned)time(NULL));
@@ -58,25 +58,45 @@ void matar_todos(){
 }
 
 void sacar_carta(int jog_id, int index_carta){
+	sem_wait(&sem_controle_cheio[jog_id-1]);
 	pthread_mutex_lock(&mutex_acesso[jog_id-1],NULL);
-	if(decks[jog_id-1].n>0){
-		jog[jog_id-1].baralho[index_carta] = d[jog_id-1].fila[topo];
-		d[jog_id-1] = reorganizar_deck_apos_saque(d[jog_id-1]);
-		pthread_mutex_unlock(&mutex_controle_cheio[jog_id-1],NULL);
-	}
-	else pthread_mutex_lock(&mutex_controle_vazio[jog_id-1],NULL);
+	jog[jog_id-1].baralho[index_carta] = decks[jog_id-1].fila[topo];
+	decks[jog_id-1] = reorganizar_deck_apos_saque(decks[jog_id-1]);
 	pthread_mutex_unlock(&mutex_acesso[jog_id-1],NULL);
+	sem_post(&sem_controle_vazio[jog_id-1]);
 }
 
 void descartar(int jog_id, int index_carta){
+	sem_wait(&sem_controle_vazio[jog_id%4]);
 	pthread_mutex_lock(&mutex_acesso[jog_id%4],NULL);
-		if(decks[jog_id%4].n!=N){
-		d[jog_id%4].fila[base] = jog[jog_id%4].baralho[index_carta];
-		d[jog_id%4] = reorganizar_deck_apos_descarte(d[jog_id%4]);
-		pthread_mutex_unlock(&mutex_controle_vazio[jog_id%4],NULL);
+	decks[jog_id%4].fila[base] = jog[jog_id%4].baralho[index_carta];
+	decks[jog_id%4] = reorganizar_deck_apos_descarte(decks[jog_id%4]);		
+	pthread_mutex_unlock(&mutex_acesso[jog_id%4],NULL);
+	sem_post(&sem_controle_cheio[jog_id%4]);
+}
+
+void init_all_sems(){
+	int i;
+	for(i=0;i<4;i++){
+		sem_init(&mutex_controle_cheio[i],0,0);
+		sem_init(&mutex_controle_vazio[i],0,2);
+		pthread_mutex_init(&mutex_acesso[i],NULL);
 	}
-	else pthread_mutex_lock(&mutex_controle_vazio[jog_id-1],NULL);
-	pthread_mutex_unlock(&mutex_acesso[jog_id-1],NULL);
+}
+
+void init_all_jog(){
+	int i;
+	for(i=0;i<4;i++){
+		
+	}
+	
+}
+
+void init_all_decks(){
+	int i;
+	for (i=0;i<4;i++){
+		
+	}
 
 }
 
@@ -85,7 +105,8 @@ void verificar_vitoria(){
 }
 
 int escolhar_descarte(){
-
+	srand((unsigned)time(NULL));
+	return rand()%4;
 }
 
 int main(){
