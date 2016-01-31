@@ -60,21 +60,45 @@ void matar_todos(){
 }
 
 void sacar_carta(int jog_id, int index_carta){
-	sem_wait(&sem_controle_cheio[jog_id-1]);
-	sem_wait(&mutex_acesso[jog_id-1]);
-	jog[jog_id-1].baralho[index_carta] = decks[jog_id-1].fila[decks[jog_id-1].topo];
-	decks[jog_id-1] = reorganizar_deck_apos_saque(decks[jog_id-1]);
-	sem_post(&mutex_acesso[jog_id-1]);
-	sem_post(&sem_controle_vazio[jog_id-1]);
+	int i;
+	sem_wait(&sem_controle_cheio[jog_id]);
+	sem_wait(&mutex_acesso[jog_id]);
+	printf("deck %d antes de saque e baralho do jogador %d...\n",jog_id,jog_id);
+	for(i=0;i<3;i++) printf("%d ",decks[jog_id].fila[i]);
+	printf("\n");
+	for(i=0;i<4;i++) printf("%d ",jog[jog_id].baralho[i]);
+	printf("\n");
+	printf("jogador %d vai sacar carta %d do deck %d...\n",jog_id,decks[jog_id].fila[decks[jog_id].topo],jog_id);
+	jog[jog_id].baralho[index_carta] = decks[jog_id].fila[decks[jog_id].topo];
+	decks[jog_id] = reorganizar_deck_apos_saque(decks[jog_id]);
+	printf("deck %d e baralho do jogador %d depois de saque...\n",jog_id,jog_id);
+	for(i=0;i<3;i++) printf("%d ",decks[jog_id].fila[i]);
+	printf("\n");
+	for(i=0;i<4;i++) printf("%d ",jog[jog_id].baralho[i]);	
+	printf("\n");
+	sem_post(&mutex_acesso[jog_id]);
+	sem_post(&sem_controle_vazio[jog_id]);
 }
 
 void descartar(int jog_id, int index_carta){
-	sem_wait(&sem_controle_vazio[jog_id%4]);
-	sem_wait(&mutex_acesso[jog_id%4]);
-	decks[jog_id%4].fila[decks[jog_id%4].base] = jog[jog_id%4].baralho[index_carta];
-	decks[jog_id%4] = reorganizar_deck_apos_descarte(decks[jog_id%4]);		
-	sem_post(&mutex_acesso[jog_id%4]);
-	sem_post(&sem_controle_cheio[jog_id%4]);
+	int i;
+	sem_wait(&sem_controle_vazio[(jog_id+1)%4]);
+	sem_wait(&mutex_acesso[(jog_id+1)%4]);
+	printf("deck %d antes de descarte e baralho do jogador %d...\n",(jog_id+1)%4,jog_id);
+	for(i=0;i<3;i++) printf("%d ",decks[(jog_id)%4].fila[i]);
+	printf("\n");
+	for(i=0;i<4;i++) printf("%d ",jog[jog_id].baralho[i]);
+	printf("\n");
+	printf("jogador %d vai descartar carta %d para o deck %d...\n",jog_id,jog[jog_id].baralho[index_carta],(jog_id+1)%4);
+	decks[(jog_id+1)%4].fila[decks[(jog_id+1)%4].base] = jog[jog_id].baralho[index_carta];
+	decks[(jog_id+1)%4] = reorganizar_deck_apos_descarte(decks[(jog_id+1)%4]);
+	printf("deck %d e baralho do jogador %d depois de descarte...\n",(jog_id+1)%4,jog_id);
+	for(i=0;i<3;i++) printf("%d ",decks[(jog_id+1)%4].fila[i]);
+	printf("\n");
+	for(i=0;i<4;i++) printf("%d ",jog[jog_id].baralho[i]);	
+	printf("\n");	
+	sem_post(&mutex_acesso[(jog_id+1)%4]);
+	sem_post(&sem_controle_cheio[(jog_id+1)%4]);
 }
 
 void init_all_sems(){
@@ -95,9 +119,13 @@ void init_all_jog(){
 }
 
 void init_all_decks(){
-	int i;
+	int i,j;
 	for (i=0;i<4;i++){
-		
+		decks[i].n = 0;
+		decks[i].N = 3;
+		decks[i].topo = 2;
+		decks[i].base = 0;
+		for(j=0;j<3;j++) decks[i].fila[j] = 0;
 	}
 
 }
@@ -112,12 +140,30 @@ int escolher_descarte(){
 }
 
 void* thread_func(void *args){
+	int  id = *(int*)args;
+	int i;
+	while(1){
+		int carta = escolher_descarte();
+		printf("Jogador %d está jogando agora...Seu deck agora:\n",id);
+		for(i=0;i<4;i++) printf("%d ",jog[id].baralho[i]);
+		printf("\n");
+		descartar(id,carta);
+		sacar_carta(id,carta);	
+		printf("Deck do jogador %d depois da jogada...\n",id);
+		for(i=0;i<4;i++) printf("%d ",jog[id].baralho[i]);
+		printf("\n");
+		//mostrar deck agora
+		
+	}
 
 }
 
 int main(){
+	pthread_t threads[4];
 	int i;
 	int *bar =  embaralhar();
+	init_all_sems();
+	init_all_decks();
 	for(i=0;i<4;i++) {jog[0].baralho[i] = *(bar+i); decks[i].base = 0; decks[i].topo = 2;}
 	for(i=4;i<8;i++) jog[1].baralho[i%4] = *(bar+i);
 	for(i=8;i<12;i++) jog[2].baralho[i%4] = *(bar+i);
@@ -126,6 +172,13 @@ int main(){
 	for(i=18;i<20;i++) decks[1].fila[i%2] = *(bar+i);
 	for(i=20;i<22;i++) decks[2].fila[i%2] = *(bar+i);
 	for(i=22;i<24;i++) decks[3].fila[i%2] = *(bar+i);
+
+	for(i=0;i<4;i++){
+		pthread_create(&threads[i],NULL,thread_func,(void *)&i);
+	}
+	for(i=0;i<4;i++){
+		pthread_join(threads[i],NULL);
+	}
 
 	
 return 0;
