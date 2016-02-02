@@ -95,27 +95,27 @@ void sacar_carta(int jog_id, int index_carta){
 
 void descartar(int jog_id, int index_carta){
 	int i;
-	sem_wait(&sem_controle_vazio[(jog_id+1)%4]);
-	sem_wait(&mutex_acesso[(jog_id+1)%4]);
-	printf("deck %d antes de descarte e baralho do jogador %d...\n",(jog_id+1)%4,jog_id);
-	for(i=0;i<3;i++) printf("%d ",decks[(jog_id+1)%4].fila[i]);
+	sem_wait(&sem_controle_vazio[(jog_id+1)%2]);
+	sem_wait(&mutex_acesso[(jog_id+1)%2]);
+	printf("deck %d antes de descarte e baralho do jogador %d...\n",(jog_id+1)%2,jog_id);
+	for(i=0;i<3;i++) printf("%d ",decks[(jog_id+1)%2].fila[i]);
 	printf("\n");
 	for(i=0;i<4;i++) printf("%d ",jog[jog_id].baralho[i]);
 	printf("\n");
-	printf("jogador %d vai descartar carta %d para o deck %d...\n",jog_id,jog[jog_id].baralho[index_carta],(jog_id+1)%4);
-	decks[(jog_id+1)%4].fila[2] = decks[(jog_id+1)%4].fila[1];
-	decks[(jog_id+1)%4].fila[1] = decks[(jog_id+1)%4].fila[0];
-	decks[(jog_id+1)%4].fila[0] = jog[jog_id].baralho[index_carta];
+	printf("jogador %d vai descartar carta %d para o deck %d...\n",jog_id,jog[jog_id].baralho[index_carta],(jog_id+1)%2);
+	decks[(jog_id+1)%2].fila[2] = decks[(jog_id+1)%2].fila[1];
+	decks[(jog_id+1)%2].fila[1] = decks[(jog_id+1)%2].fila[0];
+	decks[(jog_id+1)%2].fila[0] = jog[jog_id].baralho[index_carta];
 	jog[jog_id].baralho[index_carta] = -1;
-	decks[(jog_id+1)%4].n++;
-	decks[(jog_id+1)%4].topo++;
-	printf("deck %d e baralho do jogador %d depois de descarte...\n",(jog_id+1)%4,jog_id);
-	for(i=0;i<3;i++) printf("%d ",decks[(jog_id+1)%4].fila[i]);
+	decks[(jog_id+1)%2].n++;
+	decks[(jog_id+1)%2].topo++;
+	printf("deck %d e baralho do jogador %d depois de descarte...\n",(jog_id+1)%2,jog_id);
+	for(i=0;i<3;i++) printf("%d ",decks[(jog_id+1)%2].fila[i]);
 	printf("\n");
 	for(i=0;i<4;i++) printf("%d ",jog[jog_id].baralho[i]);	
 	printf("\n");	
-	sem_post(&mutex_acesso[(jog_id+1)%4]);
-	sem_post(&sem_controle_cheio[(jog_id+1)%4]);
+	sem_post(&mutex_acesso[(jog_id+1)%2]);
+	sem_post(&sem_controle_cheio[(jog_id+1)%2]);
 }
 
 void init_all_sems(){
@@ -192,8 +192,9 @@ int main(){
 	for(i=20;i<22;i++) decks[2].fila[i%2] = *(bar+i);
 	for(i=22;i<24;i++) decks[3].fila[i%2] = *(bar+i);
 
-	for(i=0;i<4;i++){
+	for(i=0;i<2;i++){
 		pthread_create(&threads[i],NULL,thread_func,(void *)&i);
+		printf("thread %d vai comecar..\n",i);
 	}
 	for(i=0;i<4;i++){
 		pthread_join(threads[i],NULL);
