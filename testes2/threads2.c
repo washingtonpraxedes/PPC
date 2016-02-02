@@ -16,23 +16,26 @@ typedef struct deck{
 
 jogador jog[4];
 deck decks[4];
+int last_exec=-1;
 sem_t mutex_acesso[4];
 sem_t sem_controle_cheio[4];
 sem_t sem_controle_vazio[4];
 sem_t mutex_acesso_jogador[4];
+sem_t mutex_jogada;
+int id_thread_winner=-1;
 
-int* embaralhar(){
+int* embaralhar(int tam){
 	srand((unsigned)time(NULL));
 	int i,aux, j, t;
-	int *vtr1 = malloc(24*sizeof(int));
-	for (i=0;i<24;i++){
+	int *vtr1 = malloc(tam*sizeof(int));
+	for (i=0;i<tam;i++){
 		vtr1[i] = 25;
 	}
-	for(i=0;i<24;i++){
+	for(i=0;i<tam;i++){
 		t=1;
 		do{
-			aux = rand()%24;
-			for(j=0;j<24;j++){
+			aux = rand()%tam;
+			for(j=0;j<tam;j++){
 				if(!(aux == vtr1[j])) t=1; 
 				else {t = 0;break;}
 			}
@@ -40,7 +43,7 @@ int* embaralhar(){
 		}while(!t);		
 	}
 	printf("deck ");
-	for(i=0;i<24;i++) printf("%d ",vtr1[i]);
+	for(i=0;i<tam;i++) {if(!(i%4)) printf("|");printf("%d ",vtr1[i]);}
 	printf("\n");
 	return vtr1;
 }
@@ -126,6 +129,7 @@ void init_all_sems(){
 		sem_init(&mutex_acesso[i],0,1);
 		sem_init(&mutex_acesso_jogador[i],0,1);
 	}
+	sem_init(&mutex_jogada,0,1);
 }
 
 void init_all_jog(){
@@ -149,7 +153,10 @@ void init_all_decks(){
 }
 
 void verificar_vitoria(){
-
+	sem_wait(&mutex_jogada);
+	printf("\n\n\nID_THREAD_WINNER\n %d\n\n",id_thread_winner);
+		if(id_thread_winner != -1){ printf("\n\n\n\n\n\n\n\n\n\n\nO GANHADOR FOI A THREAD %d!!!!!!\n\n\n\n\n\n\n",id_thread_winner);pthread_exit(NULL);}	
+	sem_post(&mutex_jogada);
 }
 
 int escolher_descarte(){
@@ -157,12 +164,22 @@ int escolher_descarte(){
 	return rand()%4;
 }
 
+void reinvindicar_vitoria(int id_jog){
+	sem_wait(&mutex_jogada);
+		printf("\n\n\n\nCHEGOU AQUI!!!!!!!!!!!!!!!!!!!!!!\nTHREAD_WINNER %d\nTHREAD %d\n",id_thread_winner,id_jog);
+		if(id_thread_winner == -1){ id_thread_winner = id_jog;printf("OPAAAAAA! ALGUEM VAI GANHAR. THREAD_WINNER %d THREAD %d\n\n\n",id_thread_winner,id_jog);  exit(0);}
+	sem_post(&mutex_jogada);
+}
+
 void* thread_func(void *args){
-	int  id = *(int*)args;
-	int i;
-	while(1){
-	sem_wait(&mutex_acesso_jogador[id]);
-	
+	int  id = *(int*)args;	
+	int i=0;
+	int win = 0;
+		for(i=0;i<4;i++){
+			if(jog[id].baralho[i]%8==0) win++;
+		}
+		if(win>=2) {reinvindicar_vitoria(id); pthread_exit(NULL);}
+		printf("\n\nThread %d executando...\n\n",id);
 		int carta = escolher_descarte();
 		printf("Jogador %d vai jogar agora...Seu deck agora:\n%d %d %d %d",id,jog[id].baralho[0],jog[id].baralho[1],jog[id].baralho[2],jog[id].baralho[3]);
 		printf("\n");
@@ -170,17 +187,19 @@ void* thread_func(void *args){
 		sacar_carta(id,carta);	
 		printf("Deck do jogador %d depois da jogada...\n%d %d %d %d",id,jog[id].baralho[0],jog[id].baralho[1],jog[id].baralho[2],jog[id].baralho[3]);
 		printf("\n");
-		//mostrar deck agora
+		win = 0;
+		for(i=0;i<4;i++){
+			if(jog[id].baralho[i]%8==0) win++;
+		}
+		if(win>=2) {reinvindicar_vitoria(id); pthread_exit(NULL);}
 		
-	
-	sem_post(&mutex_acesso_jogador[id]);
-	}
+	i++;
 }
 
 int main(){
 	pthread_t threads[4];
-	int i;
-	int *bar =  embaralhar();
+	int i,j=0;
+	int *bar =  embaralhar(24);
 	init_all_sems();
 	init_all_decks();
 	for(i=0;i<4;i++) {jog[0].baralho[i] = *(bar+i); decks[i].base = 0; decks[i].topo = 2;}
@@ -191,15 +210,19 @@ int main(){
 	for(i=18;i<20;i++) decks[1].fila[i%2] = *(bar+i);
 	for(i=20;i<22;i++) decks[2].fila[i%2] = *(bar+i);
 	for(i=22;i<24;i++) decks[3].fila[i%2] = *(bar+i);
-
-	for(i=0;i<4;i++){
-		pthread_create(&threads[i],NULL,thread_func,(void *)&i);
+	int *vtr;
+	while(1){
+		verificar_vitoria();
+		printf("\n\n\n");
+		vtr = embaralhar(4);	
+		printf("\n\n");
+		for(i=0;i<4;i++){
+			if(!pthread_create(&threads[*(vtr+i)],NULL,thread_func,(void *)(vtr+i))) printf("Iniciando thread %d\n",i);
+			else printf("Falhou em criar a thread %d\n",i);
+			pthread_join(threads[*(vtr+i)],NULL);
+			usleep(100000);
+		}	
 	}
-	for(i=0;i<4;i++){
-		pthread_join(threads[i],NULL);
-	}
-
-	
 return 0;
 }
 
