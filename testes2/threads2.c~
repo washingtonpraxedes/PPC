@@ -16,7 +16,6 @@ typedef struct deck{
 
 jogador jog[4];
 deck decks[4];
-int last_exec=-1;
 sem_t mutex_acesso[4];
 sem_t sem_controle_cheio[4];
 sem_t sem_controle_vazio[4];
@@ -42,25 +41,7 @@ int* embaralhar(int tam){
 			if(t) vtr1[i] = aux;
 		}while(!t);		
 	}
-	printf("deck ");
-	for(i=0;i<tam;i++) {if(!(i%4)) printf("|");printf("%d ",vtr1[i]);}
-	printf("\n");
 	return vtr1;
-}
-
-/*deck reorganizar_deck_apos_saque(deck d){
-	d.fila[d.topo] = -1;
-	d.topo--;
-	d.n--;
-}
-
-deck reorganizar_deck_apos_descarte(deck d){
-	d.topo++;
-	d.n++;
-}*/
-
-void matar_todos(){
-
 }
 
 void sacar_carta(int jog_id, int index_carta){
@@ -132,14 +113,6 @@ void init_all_sems(){
 	sem_init(&mutex_jogada,0,1);
 }
 
-void init_all_jog(){
-	int i;
-	for(i=0;i<4;i++){
-		
-	}
-	
-}
-
 void init_all_decks(){
 	int i,j;
 	for (i=0;i<4;i++){
@@ -152,13 +125,6 @@ void init_all_decks(){
 
 }
 
-void verificar_vitoria(){
-	sem_wait(&mutex_jogada);
-	printf("\n\n\nID_THREAD_WINNER\n %d\n\n",id_thread_winner);
-		if(id_thread_winner != -1){ printf("\n\n\n\n\n\n\n\n\n\n\nO GANHADOR FOI A THREAD %d!!!!!!\n\n\n\n\n\n\n",id_thread_winner);pthread_exit(NULL);}	
-	sem_post(&mutex_jogada);
-}
-
 int escolher_descarte(){
 	srand((unsigned)time(NULL));
 	return rand()%4;
@@ -167,7 +133,10 @@ int escolher_descarte(){
 void reinvindicar_vitoria(int id_jog){
 	sem_wait(&mutex_jogada);
 		printf("\n\n\n\nCHEGOU AQUI!!!!!!!!!!!!!!!!!!!!!!\nTHREAD_WINNER %d\nTHREAD %d\n",id_thread_winner,id_jog);
-		if(id_thread_winner == -1){ id_thread_winner = id_jog;printf("OPAAAAAA! ALGUEM VAI GANHAR. THREAD_WINNER %d THREAD %d\n\n\n",id_thread_winner,id_jog);  exit(0);}
+		if(id_thread_winner == -1){ 
+		id_thread_winner = id_jog;printf("JOGADOR %d VENCEU!!!!\n\n\n",id_thread_winner);
+		exit(0);
+		}
 	sem_post(&mutex_jogada);
 }
 
@@ -175,10 +144,7 @@ void* thread_func(void *args){
 	int  id = *(int*)args;	
 	int i=0;
 	int win = 0;
-		for(i=0;i<4;i++){
-			if(jog[id].baralho[i]%4==0) win++;
-		}
-		if(win>=2) {reinvindicar_vitoria(id); pthread_exit(NULL);}
+		if(jog[id].baralho[0]%6 == jog[id].baralho[1]%6 && jog[id].baralho[0]%6 == jog[id].baralho[2]%6 && jog[id].baralho[0]%6 == jog[id].baralho[3]%6) {reinvindicar_vitoria(id); pthread_exit(NULL);}
 		printf("\n\nThread %d executando...\n\n",id);
 		int carta = escolher_descarte();
 		printf("Jogador %d vai jogar agora...Seu deck agora:\n%d %d %d %d",id,jog[id].baralho[0],jog[id].baralho[1],jog[id].baralho[2],jog[id].baralho[3]);
@@ -188,11 +154,7 @@ void* thread_func(void *args){
 		printf("Deck do jogador %d depois da jogada...\n%d %d %d %d",id,jog[id].baralho[0],jog[id].baralho[1],jog[id].baralho[2],jog[id].baralho[3]);
 		printf("\n");
 		win = 0;
-		for(i=0;i<4;i++){
-			if(jog[id].baralho[i]%4==0) win++;
-		}
-		if(win>=2) {reinvindicar_vitoria(id); pthread_exit(NULL);}
-		
+		if(jog[id].baralho[0]%6 == jog[id].baralho[1]%6 && jog[id].baralho[0]%6 == jog[id].baralho[2]%6 && jog[id].baralho[0]%6 == jog[id].baralho[3]%6) {reinvindicar_vitoria(id); pthread_exit(NULL);}
 	i++;
 }
 
@@ -200,6 +162,9 @@ int main(){
 	pthread_t threads[4];
 	int i,j=0;
 	int *bar =  embaralhar(24);
+	printf("deck ");
+	for(i=0;i<24;i++) {if(!(i%4)) printf("|");printf("%d ",bar[i]);}
+	printf("\n");
 	init_all_sems();
 	init_all_decks();
 	for(i=0;i<4;i++) {jog[0].baralho[i] = *(bar+i); decks[i].base = 0; decks[i].topo = 2;}
@@ -210,18 +175,17 @@ int main(){
 	for(i=18;i<20;i++) decks[1].fila[i%2] = *(bar+i);
 	for(i=20;i<22;i++) decks[2].fila[i%2] = *(bar+i);
 	for(i=22;i<24;i++) decks[3].fila[i%2] = *(bar+i);
-	int *vtr;
+	int *vtr;	
 	while(1){
-		verificar_vitoria();
 		printf("\n\n\n");
 		vtr = embaralhar(4);	
 		printf("\n\n");
 		for(i=0;i<4;i++){
-			if(!pthread_create(&threads[*(vtr+i)],NULL,thread_func,(void *)(vtr+i))) printf("Iniciando thread %d\n",i);
+			if(!pthread_create(&threads[*(vtr+i)],NULL,thread_func,(void *)(vtr+i))) printf("Iniciando jogador %d\n",*(vtr+i));
 			else printf("Falhou em criar a thread %d\n",i);
-			pthread_join(threads[*(vtr+i)],NULL);
-			usleep(100000);
-		}	
+			//pthread_join(threads[*(vtr+i)],NULL);
+		}
+		usleep(100000);	
 	}
 return 0;
 }
